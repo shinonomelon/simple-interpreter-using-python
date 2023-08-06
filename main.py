@@ -99,13 +99,21 @@ class Parser:
                 result -= self.term()
         return result
 
-def interpret(text):
+def Interpreter(text):
     lexer = Lexer(text)
     parser = Parser(lexer)
     return parser.expr()
 
-# Test
-test_input = input("計算式を入力して")
-interpret(test_input)
 
-print(interpret(test_input))
+if __name__ == "__main__":
+    while True:
+        try:
+            text = input("simple_interpreter> ")
+            if not text:
+                continue
+            if text == "exit()" or text == "exit();":
+                break
+            result = Interpreter(text)
+            print(result)
+        except Exception as e:
+            print(e)
