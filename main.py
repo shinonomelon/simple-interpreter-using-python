@@ -1,22 +1,21 @@
-# Simple JavaScript Interpreter
-
-# Tokens
-INTEGER, PLUS, MINUS, MUL, DIV, EOF = "INTEGER", "PLUS", "MINUS", "MUL", "DIV", "EOF"
-
 class Token:
     def __init__(self, type, value):
         self.type = type
         self.value = value
 
-# Lexer: Breaks input string into tokens
+# Token types
+INTEGER, FLOAT, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = (
+    "INTEGER", "FLOAT", "PLUS", "MINUS", "MUL", "DIV", "LPAREN", "RPAREN", "EOF"
+)
+
 class Lexer:
     def __init__(self, text):
         self.text = text
         self.pos = 0
         self.current_char = self.text[self.pos]
 
-    def error(self):
-        raise Exception("Invalid character")
+    def error(self, msg):
+        raise Exception(msg)
 
     def advance(self):
         self.pos += 1
@@ -25,20 +24,27 @@ class Lexer:
         else:
             self.current_char = None
 
-    def integer(self):
+    def number(self):
         result = ""
-        while self.current_char is not None and self.current_char.isdigit():
+        while self.current_char is not None and (self.current_char.isdigit() or self.current_char == '.'):
             result += self.current_char
             self.advance()
-        return int(result)
+
+        if '.' in result:
+            return float(result)
+        else:
+            return int(result)
 
     def get_next_token(self):
         while self.current_char is not None:
             if self.current_char.isspace():
                 self.advance()
                 continue
-            if self.current_char.isdigit():
-                return Token(INTEGER, self.integer())
+            if self.current_char == '-' and (self.text[self.pos + 1].isdigit() or self.text[self.pos + 1] == '.'):
+                self.advance()  # Move to the number part
+                return Token(INTEGER if '.' not in self.text[self.pos:] else FLOAT, -self.number())
+            if self.current_char.isdigit() or self.current_char == '.':
+                return Token(INTEGER if '.' not in self.text[self.pos:] else FLOAT, self.number())
             if self.current_char == '+':
                 self.advance()
                 return Token(PLUS, '+')
@@ -51,11 +57,17 @@ class Lexer:
             if self.current_char == '/':
                 self.advance()
                 return Token(DIV, '/')
-            self.error()
+            if self.current_char == '(':
+                self.advance()
+                return Token(LPAREN, '(')
+            if self.current_char == ')':
+                self.advance()
+                return Token(RPAREN, ')')
+
+            self.error(f"Invalid character: {self.current_char}")
 
         return Token(EOF, None)
 
-# Parser: Converts tokens to AST
 class Parser:
     def __init__(self, lexer):
         self.lexer = lexer
@@ -72,8 +84,14 @@ class Parser:
 
     def factor(self):
         token = self.current_token
-        self.eat(INTEGER)
-        return token.value
+        if token.type in (INTEGER, FLOAT):
+            self.eat(token.type)
+            return token.value
+        elif token.type == LPAREN:
+            self.eat(LPAREN)
+            result = self.expr()
+            self.eat(RPAREN)
+            return result
 
     def term(self):
         result = self.factor()
@@ -105,7 +123,6 @@ def interpret(text):
     return parser.expr()
 
 # Test
-test_input = input("計算式を入力して")
-interpret(test_input)
-
-print(interpret(test_input))
+test_input = input("計算式を入力して：")
+result = interpret(test_input)
+print(f"結果: {result}")
