@@ -1,14 +1,13 @@
-# Simple JavaScript Interpreter
-
-# Tokens
-INTEGER, PLUS, MINUS, MUL, DIV, EOF = "INTEGER", "PLUS", "MINUS", "MUL", "DIV", "EOF"
-
 class Token:
     def __init__(self, type, value):
         self.type = type
         self.value = value
 
-# Lexer: Breaks input string into tokens
+# Token types
+INTEGER, PLUS, MINUS, MUL, DIV, LPAREN, RPAREN, EOF = (
+    "INTEGER", "PLUS", "MINUS", "MUL", "DIV", "LPAREN", "RPAREN", "EOF"
+)
+
 class Lexer:
     def __init__(self, text):
         self.text = text
@@ -37,6 +36,9 @@ class Lexer:
             if self.current_char.isspace():
                 self.advance()
                 continue
+            if self.current_char == '-' and self.text[self.pos + 1].isdigit():
+                self.advance()  # Move to the digit part
+                return Token(INTEGER, -self.integer())
             if self.current_char.isdigit():
                 return Token(INTEGER, self.integer())
             if self.current_char == '+':
@@ -51,11 +53,16 @@ class Lexer:
             if self.current_char == '/':
                 self.advance()
                 return Token(DIV, '/')
+            if self.current_char == '(':
+                self.advance()
+                return Token(LPAREN, '(')
+            if self.current_char == ')':
+                self.advance()
+                return Token(RPAREN, ')')
             self.error()
 
         return Token(EOF, None)
 
-# Parser: Converts tokens to AST
 class Parser:
     def __init__(self, lexer):
         self.lexer = lexer
@@ -72,8 +79,14 @@ class Parser:
 
     def factor(self):
         token = self.current_token
-        self.eat(INTEGER)
-        return token.value
+        if token.type == INTEGER:
+            self.eat(INTEGER)
+            return token.value
+        elif token.type == LPAREN:
+            self.eat(LPAREN)
+            result = self.expr()
+            self.eat(RPAREN)
+            return result
 
     def term(self):
         result = self.factor()
@@ -99,21 +112,14 @@ class Parser:
                 result -= self.term()
         return result
 
-def Interpreter(text):
+def interpret(text):
     lexer = Lexer(text)
     parser = Parser(lexer)
     return parser.expr()
 
+# Test
 
-if __name__ == "__main__":
-    while True:
-        try:
-            text = input("simple_interpreter> ")
-            if not text:
-                continue
-            if text == "exit()" or text == "exit();":
-                break
-            result = Interpreter(text)
-            print(result)
-        except Exception as e:
-            print(e)
+test_input = input("計算式を入力して：")
+interpret(test_input)
+
+print(+interpret(test_input))
